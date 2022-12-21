@@ -92,18 +92,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void logout(String refreshToken) {
+        UserEntity user = verifyRefreshToken(refreshToken);
+        user.setRefreshToken(null);
+        userRepository.save(user);
+        log.info("IN UserServiceImpl -> logout(): {} user successfully logged out", user.getPhoneNumber());
+    }
+
+    @Override
     public Map<String, String> getTokens(String refreshToken) {
         log.info("IN UserServiceImpl -> getTokens()");
-        // validating refresh token
-        Integer userId = Optional.ofNullable(jwtProvider.getUserId(refreshToken, JWTType.REFRESH))
-                .orElseThrow(() -> new BadCredentialsException("Invalid Refresh JWT"));
-
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadCredentialsException("User was not found"));
-
-        if (user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)) {
-            throw new BadCredentialsException("Refresh JWT is fake");
-        }
+        UserEntity user = verifyRefreshToken(refreshToken);
 
         // if refresh tokens match then generate a new pair of tokens and return
         Map<String, String> result = generatesTokens(user);
@@ -114,6 +113,20 @@ public class UserServiceImpl implements UserService {
 
         log.info("IN UserServiceImpl -> getTokens(): {} user refreshed success", user.getPhoneNumber());
         return result;
+    }
+
+    private UserEntity verifyRefreshToken(String refreshToken) {
+        // validating refresh token
+        Integer userId = Optional.ofNullable(jwtProvider.getUserId(refreshToken, JWTType.REFRESH))
+                .orElseThrow(() -> new BadCredentialsException("Invalid Refresh JWT"));
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("User was not found"));
+
+        if (user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)) {
+            throw new BadCredentialsException("Refresh JWT is fake");
+        }
+        return user;
     }
 
     private Map<String, String> generatesTokens(UserEntity user) {

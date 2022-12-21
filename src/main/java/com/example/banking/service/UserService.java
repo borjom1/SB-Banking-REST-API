@@ -10,4 +10,6 @@ public interface UserService {
     Map<String, String> verifyUser(String phoneNumber, String password);
 
     Map<String, String> getTokens(String refreshToken);
+
+    void logout(String refreshToken);
 }
