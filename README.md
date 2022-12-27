@@ -180,3 +180,75 @@ Refresh
 ```
 
 </details>
+
+<br>
+
+Cards
+
+<details>
+
+<br>
+
+### **Request**
+
+- URL: `localhost/user/card/all`
+- Method: **GET**
+
+**Authorization header format:**
+
+`Bearer [access_jwt]`
+
+
+### **Response**
+
+- ### 200
+
+```json
+[
+  {
+    "id": 4,
+    "type": "credit",
+    "currency": "eur",
+    "provider": "mastercard",
+    "sum": 1719.14,
+    "cardNumber": "5167910743157299",
+    "expireDate": "12/24"
+  },
+  {
+    "id": 1,
+    "type": "debit",
+    "currency": "uah",
+    "provider": "mastercard",
+    "sum": 953.98,
+    "cardNumber": "5167843703217777",
+    "expireDate": "12/25"
+  }
+]
+```
+
+<br>
+
+### **Request #2**
+
+- URL: `localhost/user/card/{id}`
+- Method: **GET**
+
+**Authorization header format:**
+
+`Bearer [access_jwt]`
+
+### **Response**
+
+- ### 200
+
+```
+013
+```
+
+- ### 400
+
+```
+Card with id:255 not exist
+```
+
+</details>
