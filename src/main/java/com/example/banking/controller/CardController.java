@@ -3,6 +3,8 @@ package com.example.banking.controller;
 import com.example.banking.dto.Card;
 import com.example.banking.dto.NewCardRequest;
 import com.example.banking.dto.Transaction;
+import com.example.banking.dto.TransactionRequest;
+import com.example.banking.exception.CardCredentialsException;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
 import com.example.banking.exception.ViolationPrivacyException;
@@ -78,4 +80,20 @@ public class CardController {
             return ResponseEntity.badRequest().body(Collections.emptyList());
         }
     }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<Map<String, String>> createTransaction(@Valid @RequestBody TransactionRequest request) {
+        Map<String, String> result = new HashMap<>();
+        var principal = (JWTUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        try {
+            log.info("IN CardController -> createTransaction() for user-id:{}", principal.getId());
+            cardService.performTransaction(principal.getId(), request);
+            result.put("message", "success");
+            return ResponseEntity.ok(result);
+        } catch (ViolationPrivacyException | CardNotFoundException | CardCredentialsException e) {
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+    
 }
