@@ -3,7 +3,9 @@ package com.example.banking.service.impl;
 import com.example.banking.dto.Card;
 import com.example.banking.dto.NewCardRequest;
 import com.example.banking.dto.Transaction;
+import com.example.banking.dto.TransactionRequest;
 import com.example.banking.entity.*;
+import com.example.banking.exception.CardCredentialsException;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
 import com.example.banking.exception.ViolationPrivacyException;
@@ -16,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.ZonedDateTime;
@@ -28,6 +31,7 @@ import java.util.List;
 public class CardServiceImpl implements CardService {
 
     private final static int CARDS_LIMIT = 5;
+    private final static int SCALE = 2;
     private final static int DEFAULT_SUM_LIMIT = 500;
 
     private final UserRepository userRepository;
@@ -178,6 +182,88 @@ public class CardServiceImpl implements CardService {
 
             return tBuilder.build();
         }).toList();
+    }
+
+    @Override
+    public void performTransaction(Integer userId, TransactionRequest request) throws ViolationPrivacyException, CardNotFoundException, CardCredentialsException {
+        log.info("IN CardService -> performTransaction(): user-id:{} transaction:{}", userId, request);
+
+        // user will be present if he pass JWTFilter
+        UserEntity sender = userRepository.findById(userId).get();
+
+        // find sender & receiver cards
+        CardEntity senderCard = getCardIfOwner(sender, request.getSenderCardId());
+        CardEntity receiverCard = cardRepository.findByCardNumber(request.getReceiverCardNumber())
+                .orElseThrow(() -> new CardNotFoundException(String.format("Card with number %s not found", request.getReceiverCardNumber())));
+
+        // define currencies
+        var senderCardCurrency = senderCard.getCurrencyType();
+        var receiverCardCurrency = receiverCard.getCurrencyType();
+
+        BigDecimal initialSum = request.getSum();
+        verifyTransactionProperties(senderCard, initialSum);
+
+        // grab commission
+        double sumRate = 1 - senderCardCurrency.getCommission() / 100;
+        BigDecimal transactionSum = initialSum.multiply(BigDecimal.valueOf(sumRate));
+        BigDecimal commission = initialSum.subtract(transactionSum);
+
+        // conversion
+        BigDecimal convertedSum = convertSum(transactionSum, senderCardCurrency, receiverCardCurrency);
+        BigDecimal convertedCommission = convertSum(commission, senderCardCurrency, receiverCardCurrency);
+
+        log.info("IN CardService -> performTransaction(): sum_rate:{}", sumRate);
+        log.info("IN CardService -> performTransaction(): initial_sum:{}, without_commission:{}, converted_sum:{}", initialSum, transactionSum,convertedSum);
+        log.info("IN CardService -> performTransaction(): commission:{}, converted_commission:{}", commission, convertedCommission);
+
+        // make transfer
+        senderCard.setSum(senderCard.getSum().subtract(initialSum));
+        receiverCard.setSum(receiverCard.getSum().add(convertedSum));
+
+        // build transaction
+        TransactionEntity transaction = TransactionEntity.builder()
+                .sender(senderCard)
+                .receiver(receiverCard)
+                .purpose(request.getPurpose())
+                .time(ZonedDateTime.now())
+                .sum(initialSum)
+                .convertedSum(convertedSum)
+                .commission(commission)
+                .convertedCommission(convertedCommission)
+                .build();
+
+        // saving
+        cardRepository.save(senderCard);
+        cardRepository.save(receiverCard);
+        transactionRepository.save(transaction);
+
+        log.info("IN CardService -> performTransaction(): user-id:{} transaction:{} - SUCCESS", userId, request);
+    }
+
+    private BigDecimal convertSum(BigDecimal sum, CurrencyTypeEntity senderCardCurrency, CurrencyTypeEntity receiverCardCurrency) {
+
+        if (senderCardCurrency.getName().equals("uah")) {
+            return receiverCardCurrency.getName().equals("uah") ?
+                    sum :
+                    sum.divide(receiverCardCurrency.getSalesExchangeRate(), SCALE, RoundingMode.HALF_UP);
+        } else if (receiverCardCurrency.getName().equals("uah")) {
+            return sum.multiply(senderCardCurrency.getBuyingExchangeRate());
+        } else {
+            sum = sum.multiply(senderCardCurrency.getBuyingExchangeRate());
+            return sum.divide(receiverCardCurrency.getSalesExchangeRate(), SCALE, RoundingMode.HALF_UP);
+        }
+    }
+
+    private void verifyTransactionProperties(CardEntity senderCard, BigDecimal transactionSum) throws CardCredentialsException {
+        if (senderCard.isBlocked()) { // check block status
+            throw new CardCredentialsException("Card id:" + senderCard.getId() + " is blocked");
+        } else if (senderCard.getExpiryDate().isBefore(LocalDate.now())) { // check expire date
+            throw new CardCredentialsException("Card id:" + senderCard.getId() + " is expired");
+        } else if (senderCard.getSum().compareTo(transactionSum) < 0) { // check sum
+            throw new CardCredentialsException("Card id:" + senderCard.getId() + " not enough funds");
+        } else if (BigDecimal.valueOf(senderCard.getSumLimit().longValue()).compareTo(transactionSum) < 0) { // check limit
+            throw new CardCredentialsException("Card id:" + senderCard.getId() + " limit is exceeded");
+        }
     }
 
     private CardEntity getCardIfOwner(UserEntity user, Integer cardId) throws ViolationPrivacyException {

@@ -3,6 +3,8 @@ package com.example.banking.service;
 import com.example.banking.dto.Card;
 import com.example.banking.dto.NewCardRequest;
 import com.example.banking.dto.Transaction;
+import com.example.banking.dto.TransactionRequest;
+import com.example.banking.exception.CardCredentialsException;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
 import com.example.banking.exception.ViolationPrivacyException;
@@ -17,4 +19,6 @@ public interface CardService {
     String getCvv(Integer userId, Integer cardId) throws CardNotFoundException;
 
     List<Transaction> getAllTransactions(Integer userId, Integer cardId) throws ViolationPrivacyException;
+
+    void performTransaction(Integer userId, TransactionRequest request) throws ViolationPrivacyException, CardNotFoundException, CardCredentialsException;
 }
