@@ -303,4 +303,117 @@ Bearer [access_jwt]
 }
 ```
 
+<br>
+
+### **Request #4**
+
+- URL: `localhost/user/card/{id}/transfers`
+- Method: **GET**
+
+**Authorization header format:**
+
+```
+Bearer [access_jwt]
+```
+
+### **Response**
+
+- ### 200
+
+```json
+[
+  {
+    "performedAt": "2022-12-27T14:08:07.864+00:00",
+    "partnerName": "Hanley Todd",
+    "partnerCardNumber": "4693092472571337",
+    "sum": 500.00,
+    "commission": 15.00,
+    "currency": "uah",
+    "partnerSender": false
+  },
+  {
+    "performedAt": "2022-12-27T14:04:47.086+00:00",
+    "partnerName": "Blake Davison",
+    "partnerCardNumber": "4693092472571337",
+    "sum": 353.98,
+    "commission": 7.22,
+    "currency": "uah",
+    "partnerSender": true
+  }
+]
+```
+
+- ### 400
+
+```json
+[]
+```
+
+<br>
+
+### **Request #5**
+
+- URL: `localhost/user/card/transfer`
+- Method: **POST**
+- Request / response body format: **JSON**
+
+**Authorization header format:**
+
+```
+Bearer [access_jwt]
+```
+
+**Request body:**
+
+```json
+{
+  "senderCardId": 1,
+  "receiverCardNumber": "4693092472571337",
+  "sum": 100,
+  "purpose": "your present"
+}
+```
+
+### **Response**
+
+- ### 200
+
+```json
+{
+  "message": "success"
+}
+```
+
+- ### 400
+
+```json
+{
+  "error": "Card with number 4693092472571337 not found"
+}
+```
+
+```json
+{
+  "error": "Card id:1 is blocked"
+}
+```
+
+```json
+{
+  "error": "Card id:1 is expired"
+}
+```
+
+```json
+{
+  "error": "Card id:1 not enough funds"
+}
+```
+
+```json
+{
+  "error": "Card id:1 limit is exceeded"
+}
+```
+
 </details>
