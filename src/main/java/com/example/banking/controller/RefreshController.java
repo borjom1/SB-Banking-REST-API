@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/refresh")
@@ -42,4 +45,19 @@ public class RefreshController {
             );
         }
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(@Valid @RequestBody RefreshRequest body) {
+        log.info("IN RefreshController -> logout()");
+        Map<String, String> result = new HashMap<>();
+        try {
+            userService.logout(body.getRefreshToken());
+            result.put("message", "success");
+            return ResponseEntity.ok(result);
+        } catch (BadCredentialsException e) {
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
 }
