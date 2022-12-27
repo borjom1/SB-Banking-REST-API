@@ -7,6 +7,7 @@ import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
 import com.example.banking.repository.*;
 import com.example.banking.service.CardService;
+import com.example.banking.util.NumberGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
