@@ -2,9 +2,11 @@ package com.example.banking.service.impl;
 
 import com.example.banking.dto.Card;
 import com.example.banking.dto.NewCardRequest;
+import com.example.banking.dto.Transaction;
 import com.example.banking.entity.*;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
+import com.example.banking.exception.ViolationPrivacyException;
 import com.example.banking.repository.*;
 import com.example.banking.service.CardService;
 import com.example.banking.util.NumberGenerator;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -32,15 +35,17 @@ public class CardServiceImpl implements CardService {
     private final CardProviderRepository cardProviderRepository;
     private final CurrencyRepository currencyRepository;
     private final CardTypeRepository cardTypeRepository;
+    private final TransactionRepository transactionRepository;
 
     @Autowired
     public CardServiceImpl(UserRepository userRepository, CardRepository cardRepository, CardProviderRepository cardProviderRepository,
-                           CurrencyRepository currencyRepository, CardTypeRepository cardTypeRepository) {
+                           CurrencyRepository currencyRepository, CardTypeRepository cardTypeRepository, TransactionRepository transactionRepository) {
         this.userRepository = userRepository;
         this.cardRepository = cardRepository;
         this.cardProviderRepository = cardProviderRepository;
         this.currencyRepository = currencyRepository;
         this.cardTypeRepository = cardTypeRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Override
@@ -130,4 +135,56 @@ public class CardServiceImpl implements CardService {
         log.info("IN CardService -> getCvv(): card-id:{} - success", cardId);
         return card.getCvvCode();
     }
+
+    @Override
+    public List<Transaction> getAllTransactions(Integer userId, Integer cardId) throws ViolationPrivacyException {
+        log.info("IN CardService -> getAllTransactions(): user-id:{} card-id:{}", userId, cardId);
+
+        // user will be present if he pass JWTFilter
+        UserEntity user = userRepository.findById(userId).get();
+
+        getCardIfOwner(user, cardId);
+
+        List<TransactionEntity> transactions = transactionRepository.getAllByCardId(cardId);
+
+        return transactions.stream().map(tEntity -> {
+            CardEntity senderCard = tEntity.getSender();
+            CardEntity receiverCard = tEntity.getReceiver();
+            UserEntity partner;
+
+            Transaction.TransactionBuilder tBuilder = Transaction.builder();
+
+            // if user was transfer creator
+            if (senderCard.getId().equals(cardId)) {
+                partner = receiverCard.getOwner();
+
+                tBuilder.sum(tEntity.getSum())
+                        .commission(tEntity.getCommission())
+                        .currency(senderCard.getCurrencyType().getName())
+                        .partnerCardNumber(receiverCard.getCardNumber())
+                        .isPartnerSender(false);
+            } else {
+                partner = senderCard.getOwner();
+
+                tBuilder.sum(tEntity.getConvertedSum())
+                        .commission(tEntity.getConvertedCommission())
+                        .currency(receiverCard.getCurrencyType().getName())
+                        .partnerCardNumber(senderCard.getCardNumber())
+                        .isPartnerSender(true);
+            }
+
+            tBuilder.performedAt(Date.from(tEntity.getTime().toInstant()));
+            tBuilder.partnerName(partner.getFirstName() + " " + partner.getLastName());
+
+            return tBuilder.build();
+        }).toList();
+    }
+
+    private CardEntity getCardIfOwner(UserEntity user, Integer cardId) throws ViolationPrivacyException {
+        return user.getCards().stream()
+                .filter(card -> card.getId().equals(cardId))
+                .findAny()
+                .orElseThrow(() -> new ViolationPrivacyException(String.format("User:%d does not have card with id:%d", user.getId(), cardId)));
+    }
+
 }
