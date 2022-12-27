@@ -1,16 +1,20 @@
 package com.example.banking.service.impl;
 
 import com.example.banking.dto.Card;
-import com.example.banking.entity.CardEntity;
-import com.example.banking.entity.UserEntity;
+import com.example.banking.entity.*;
 import com.example.banking.exception.CardNotFoundException;
-import com.example.banking.repository.UserRepository;
+import com.example.banking.exception.CardsLimitException;
+import com.example.banking.repository.*;
 import com.example.banking.service.CardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -18,11 +22,71 @@ import java.util.List;
 @Service
 public class CardServiceImpl implements CardService {
 
+    private final static int CARDS_LIMIT = 5;
+    private final static int DEFAULT_SUM_LIMIT = 500;
+
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
+    private final CardProviderRepository cardProviderRepository;
+    private final CurrencyRepository currencyRepository;
+    private final CardTypeRepository cardTypeRepository;
 
     @Autowired
-    public CardServiceImpl(UserRepository userRepository) {
+    public CardServiceImpl(UserRepository userRepository, CardRepository cardRepository, CardProviderRepository cardProviderRepository,
+                           CurrencyRepository currencyRepository, CardTypeRepository cardTypeRepository) {
         this.userRepository = userRepository;
+        this.cardRepository = cardRepository;
+        this.cardProviderRepository = cardProviderRepository;
+        this.currencyRepository = currencyRepository;
+        this.cardTypeRepository = cardTypeRepository;
+    }
+
+    @Override
+    public void createCard(NewCardRequest request, Integer userId) throws CardsLimitException {
+        log.info("IN CardService -> createCard() user-id:{}", userId);
+
+        // user will be present if he pass JWTFilter
+        UserEntity user = userRepository.findById(userId).get();
+        if (user.getCards().size() == CARDS_LIMIT) {
+            throw new CardsLimitException(String.format("User can not have more than %d cards", CARDS_LIMIT));
+        }
+
+        // validate request options
+        CardProviderEntity selectedProvider = cardProviderRepository.findByName(request.getProvider())
+                .orElseThrow(() -> new BadCredentialsException("Card provider not found"));
+
+        CurrencyTypeEntity selectedCurrency = currencyRepository.findByName(request.getCurrency())
+                .orElseThrow(() -> new BadCredentialsException("Currency not found"));
+
+        CardTypeEntity selectedCardType = cardTypeRepository.findByName(request.getType())
+                .orElseThrow(() -> new BadCredentialsException("Type of card not found"));
+
+
+        String generatedCardNumber;
+        do {
+            generatedCardNumber = selectedProvider.getCode() + NumberGenerator.generate(NumberGenerator.ACCOUNT_LENGTH);
+        } while (cardRepository.findByCardNumber(generatedCardNumber).isPresent());
+
+        // build card
+        CardEntity newCard = CardEntity.builder()
+                .cardNumber(generatedCardNumber)
+                .createdAt(ZonedDateTime.now())
+                .provider(selectedProvider)
+                .cardType(selectedCardType)
+                .currencyType(selectedCurrency)
+                .expiryDate(LocalDate.of(LocalDate.now().getYear() + 2, Month.DECEMBER, 1))
+                .cvvCode(NumberGenerator.generate(NumberGenerator.CVV_LENGTH))
+                .pinCode(NumberGenerator.generate(NumberGenerator.PIN_LENGTH))
+                .sum(BigDecimal.ZERO)
+                .sumLimit(DEFAULT_SUM_LIMIT)
+                .isBlocked(false)
+                .owner(user)
+                .build();
+
+        // save card
+        user.getCards().add(newCard);
+        cardRepository.save(newCard);
+        log.info("IN CardService -> createCard(): created card:{} for user:{}", newCard.getId(), userId);
     }
 
     @Override
