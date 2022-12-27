@@ -196,7 +196,9 @@ Cards
 
 **Authorization header format:**
 
-```Bearer [access_jwt]```
+```
+Bearer [access_jwt]
+```
 
 
 ### **Response**
@@ -235,7 +237,9 @@ Cards
 
 **Authorization header format:**
 
-```Bearer [access_jwt]```
+```
+Bearer [access_jwt]
+```
 
 ### **Response**
 
@@ -249,6 +253,54 @@ Cards
 
 ```
 Card with id:255 not exist
+```
+
+<br>
+
+### **Request #3**
+
+- URL: `localhost/user/card/new`
+- Method: **POST**
+- Request / response body format: **JSON**
+
+**Authorization header format:**
+
+```
+Bearer [access_jwt]
+```
+
+**Request body:**
+
+```json
+{
+  "provider": "mastercard",
+  "currency": "uah",
+  "type": "debit"
+}
+```
+
+### **Response**
+
+- ### 200
+
+```json
+{
+  "message": "success"
+}
+```
+
+- ### 400
+
+```json
+{
+    "error": "Card provider not found"
+}
+```
+
+```json
+{
+    "error": "User can not have more than 5 cards"
+}
 ```
 
 </details>
