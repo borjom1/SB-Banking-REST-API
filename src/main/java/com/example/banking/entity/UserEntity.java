@@ -48,6 +48,9 @@ public class UserEntity {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<RoleEntity> roles;
 
+    @OneToMany(mappedBy = "owner")
+    private Set<CardEntity> cards;
+
 
     public void addRole(RoleEntity role) {
         roles.add(role);
