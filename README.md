@@ -196,7 +196,7 @@ Cards
 
 **Authorization header format:**
 
-`Bearer [access_jwt]`
+```Bearer [access_jwt]```
 
 
 ### **Response**
@@ -235,7 +235,7 @@ Cards
 
 **Authorization header format:**
 
-`Bearer [access_jwt]`
+```Bearer [access_jwt]```
 
 ### **Response**
 
