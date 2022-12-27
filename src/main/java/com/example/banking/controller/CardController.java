@@ -2,8 +2,10 @@ package com.example.banking.controller;
 
 import com.example.banking.dto.Card;
 import com.example.banking.dto.NewCardRequest;
+import com.example.banking.dto.Transaction;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
+import com.example.banking.exception.ViolationPrivacyException;
 import com.example.banking.security.jwt.JWTUserDetails;
 import com.example.banking.service.CardService;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +63,19 @@ public class CardController {
         } catch (BadCredentialsException | CardsLimitException e) {
             result.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(result);
+        }
+    }
+
+    @GetMapping("/{id}/transfers")
+    public ResponseEntity<List<Transaction>> getTransactions(@PathVariable("id") int cardId) {
+        var principal = (JWTUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        try {
+            log.info("IN CardController -> getTransactions() for user-id:{}, card-id: {}", principal.getId(), cardId);
+            var transactions = cardService.getAllTransactions(principal.getId(), cardId);
+            return ResponseEntity.ok(transactions);
+        } catch (BadCredentialsException | ViolationPrivacyException e) {
+            log.warn("IN CardController -> getTransactions() for user-id:{}, exception: {}", principal.getId(), e.getMessage());
+            return ResponseEntity.badRequest().body(Collections.emptyList());
         }
     }
 }
