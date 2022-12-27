@@ -1,6 +1,7 @@
 package com.example.banking.service.impl;
 
 import com.example.banking.dto.Card;
+import com.example.banking.dto.NewCardRequest;
 import com.example.banking.entity.*;
 import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.exception.CardsLimitException;
