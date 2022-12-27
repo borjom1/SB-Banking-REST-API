@@ -1,12 +1,15 @@
 package com.example.banking.controller;
 
 import com.example.banking.dto.Card;
+import com.example.banking.exception.CardNotFoundException;
 import com.example.banking.security.jwt.JWTUserDetails;
 import com.example.banking.service.CardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,5 +32,16 @@ public class CardController {
         var principal = (JWTUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("IN CardController -> getAllCards(): phone-number: {} user", principal.getPhoneNumber());
         return cardService.getAllCards(principal.getId());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<String> getCvv(@PathVariable int id) {
+        try {
+            log.info("IN CardController -> getCvv(): card-id:{}", id);
+            var principal = (JWTUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return ResponseEntity.ok(cardService.getCvv(principal.getId(), id));
+        } catch (CardNotFoundException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }
