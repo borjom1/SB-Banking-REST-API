@@ -20,5 +20,9 @@ public class CurrencyController {
     public CurrencyController(CurrencyService currencyService) {
         this.currencyService = currencyService;
     }
-    
+
+    @GetMapping("/rates")
+    public Map<String, String> getExchangeRates() {
+        return currencyService.getExchangeRates();
+    }
 }
