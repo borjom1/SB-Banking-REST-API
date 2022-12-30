@@ -23,5 +23,9 @@ public class UserController {
     }
 
 
-    
+    @GetMapping("/info")
+    public UserInfo getInfo() {
+        var principal = (JWTUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return userService.getUserInfo(principal.getId());
+    }
 }
