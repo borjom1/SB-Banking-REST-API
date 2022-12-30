@@ -85,7 +85,7 @@ public class JWTProvider {
 
     public String getToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
-        return bearer == null ? null : bearer.substring(7);
+        return bearer == null || bearer.length() < 7 ? null : bearer.substring(7);
     }
 
     private DecodedJWT getDecodedJWT(String token, JWTType type) {
