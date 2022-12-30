@@ -474,8 +474,6 @@ Currency
 - Method: **GET**
 - Response body format: **JSON**
 
-</details>
-
 ### **Response**
 
 - ### 200
@@ -488,5 +486,7 @@ Currency
   "usdSalesExchangeRate": "41.85"
 }
 ```
+
+</details>
 
 <br>
