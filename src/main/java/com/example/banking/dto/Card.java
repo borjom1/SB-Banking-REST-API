@@ -15,4 +15,5 @@ public class Card {
     private BigDecimal sum;
     private String cardNumber;
     private String expireDate; // month/year format
+    private boolean isBlocked;
 }

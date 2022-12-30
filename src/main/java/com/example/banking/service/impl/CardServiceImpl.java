@@ -119,7 +119,8 @@ public class CardServiceImpl implements CardService {
                     cardEntity.getProvider().getName(),
                     cardEntity.getSum(),
                     cardEntity.getCardNumber(),
-                    String.format("%d/%d", expiryDate.getMonth().getValue(), expiryDate.getYear() % 100)
+                    String.format("%d/%d", expiryDate.getMonth().getValue(), expiryDate.getYear() % 100),
+                    cardEntity.isBlocked()
             );
         }).toList();
     }
