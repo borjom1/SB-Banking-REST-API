@@ -1,6 +1,7 @@
 package com.example.banking.service;
 
 import com.example.banking.dto.RegisterRequest;
+import com.example.banking.dto.UserInfo;
 
 import java.util.Map;
 
@@ -12,4 +13,6 @@ public interface UserService {
     Map<String, String> getTokens(String refreshToken);
 
     void logout(String refreshToken);
+
+    UserInfo getUserInfo(Integer userId);
 }

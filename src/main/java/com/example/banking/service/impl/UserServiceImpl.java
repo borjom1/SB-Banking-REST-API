@@ -1,6 +1,7 @@
 package com.example.banking.service.impl;
 
 import com.example.banking.dto.RegisterRequest;
+import com.example.banking.dto.UserInfo;
 import com.example.banking.entity.RoleEntity;
 import com.example.banking.entity.UserEntity;
 import com.example.banking.repository.RoleRepository;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -113,6 +115,16 @@ public class UserServiceImpl implements UserService {
 
         log.info("IN UserServiceImpl -> getTokens(): {} user refreshed success", user.getPhoneNumber());
         return result;
+    }
+
+    @Override
+    public UserInfo getUserInfo(Integer userId) {
+        UserEntity user = userRepository.findById(userId).get();
+        return new UserInfo(
+                user.getFirstName() + " " + user.getLastName(),
+                user.getRegisteredAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                user.getPhoneNumber()
+        );
     }
 
     private UserEntity verifyRefreshToken(String refreshToken) {
