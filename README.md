@@ -223,6 +223,8 @@ Bearer [access_jwt]
 
 </details>
 
+<br>
+
 Cards
 
 <details>
