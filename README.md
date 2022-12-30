@@ -183,6 +183,46 @@ Refresh
 
 <br>
 
+User
+
+<details>
+
+<br>
+
+### **Request**
+
+- URL: `localhost/user/info`
+- Method: **GET**
+- Response body format: **JSON**
+
+**Authorization header format:**
+
+```
+Bearer [access_jwt]
+```
+
+### **Response**
+
+- ### 200
+
+```json
+{
+    "fullName": "Hanley Todd",
+    "registrationDate": "17.12.2022",
+    "phoneNumber": "+380500000000"
+}
+```
+
+- ### 401
+
+```json
+{
+    "error": "Invalid token"
+}
+```
+
+</details>
+
 Cards
 
 <details>
