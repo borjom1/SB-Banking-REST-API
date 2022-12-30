@@ -459,3 +459,34 @@ Bearer [access_jwt]
 ```
 
 </details>
+
+<br>
+
+Currency
+
+<details>
+
+<br>
+
+### **Request**
+
+- URL: `localhost/user/currency/rates`
+- Method: **GET**
+- Response body format: **JSON**
+
+</details>
+
+### **Response**
+
+- ### 200
+
+```json
+{
+  "eurBuyingExchangeRate": "39.85",
+  "eurSalesExchangeRate": "41.76",
+  "usdBuyingExchangeRate": "40.12",
+  "usdSalesExchangeRate": "41.85"
+}
+```
+
+<br>
