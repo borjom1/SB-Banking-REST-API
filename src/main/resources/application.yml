@@ -1,0 +1,36 @@
+jwt:
+  subject: banking-auth
+  issuer: banking.org
+  secret:
+    access: ...
+    refresh: ...
+
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ...
+    username: ...
+    password: ...
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+        highlight_sql: true
+
+logging:
+  level:
+    com.example.banking: DEBUG
+
+banking:
+  precision: 2
+  cards:
+    limits:
+      count: 5
+      txn-sum: 500
