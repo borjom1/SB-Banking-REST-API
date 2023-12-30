@@ -11,7 +11,7 @@ drop table if exists users;
 
 create table users
 (
-    id serial primary key,
+    id bigserial primary key,
     first_name varchar(20) not null,
     last_name varchar(20) not null,
     registered_at timestamptz not null,
@@ -29,10 +29,12 @@ create table roles
 
 create table user_roles
 (
-    user_id int references users(id),
+    user_id bigint references users(id),
     role_id int references roles(id),
     primary key (user_id, role_id)
 );
+
+insert into roles(name) values ('ROLE_USER'), ('ROLE_ADMIN');
 
 -- CARD ENTITIES
 
@@ -70,7 +72,7 @@ values ('uah', 0.0, 0.0, 1),
 
 create table cards
 (
-    id serial primary key,
+    id bigserial primary key,
     card_number varchar(16) unique not null,
     owner_id bigint references users(id) not null,
     created_at timestamptz not null,
@@ -87,7 +89,7 @@ create table cards
 
 create table transactions
 (
-    id int primary key,
+    id bigserial primary key,
     sender_card_id int references cards(id) not null,
     receiver_card_id int references cards(id) not null,
     purpose text not null,
