@@ -1,18 +1,19 @@
 package com.example.banking.service;
 
+import com.example.banking.dto.LoginRequest;
 import com.example.banking.dto.RegisterRequest;
 import com.example.banking.dto.UserInfo;
-
-import java.util.Map;
+import com.example.banking.entity.UserEntity;
+import com.example.banking.model.TokenPair;
 
 public interface UserService {
+
     void register(RegisterRequest request);
-
-    Map<String, String> verifyUser(String phoneNumber, String password);
-
-    Map<String, String> getTokens(String refreshToken);
-
+    TokenPair login(LoginRequest request);
+    TokenPair refreshTokens(String refreshToken);
     void logout(String refreshToken);
 
-    UserInfo getUserInfo(Integer userId);
+    UserEntity findUser(Long id);
+    UserInfo getUserInfo(Long userId);
+
 }
