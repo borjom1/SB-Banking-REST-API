@@ -5,8 +5,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -20,25 +20,21 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTProvider jwtProvider;
-
-    @Autowired
-    public JWTFilter(JWTProvider jwtProvider) {
-        this.jwtProvider = jwtProvider;
-    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        log.info("IN JwtFilter -> doFilterInternal()");
+        log.debug("IN JwtFilter -> doFilterInternal()");
 
         String accessToken = jwtProvider.getToken(request);
         if (accessToken != null) {
-            if (!jwtProvider.isTokenValid(accessToken, JWTType.ACCESS)) {
+            if (!jwtProvider.isTokenValid(accessToken, TokenType.ACCESS)) {
                 log.warn("Invalid token");
                 fillResponse(response);
             } else {
@@ -49,11 +45,10 @@ public class JWTFilter extends OncePerRequestFilter {
             }
         }
 
-        log.info("JWT: {}", accessToken);
+        log.debug("JWT: {}", accessToken);
         filterChain.doFilter(request, response);
     }
-    private void fillResponse(HttpServletResponse response) throws IOException {
-        log.info("IN JwtFilter -> fillResponse()");
+    private void fillResponse(@NonNull HttpServletResponse response) throws IOException {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         Map<String, String> responseBody = new HashMap<>();
