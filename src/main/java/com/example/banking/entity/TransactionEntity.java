@@ -15,9 +15,10 @@ import java.time.ZonedDateTime;
 @Builder
 @ToString(exclude = {"sender", "receiver"})
 public class TransactionEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
@@ -30,17 +31,10 @@ public class TransactionEntity {
     private CardEntity receiver;
 
     private String purpose;
-
     private ZonedDateTime time;
-
     private BigDecimal sum;
-
-    @Column(name = "converted_sum")
     private BigDecimal convertedSum;
-
     private BigDecimal commission;
-
-    @Column(name = "converted_commission")
     private BigDecimal convertedCommission;
 
 }

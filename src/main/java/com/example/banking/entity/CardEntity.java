@@ -17,11 +17,11 @@ import java.time.ZonedDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CardEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
-    @Column(name = "card_number")
     private String cardNumber;
 
     @JsonIgnore
@@ -29,16 +29,9 @@ public class CardEntity {
     @JoinColumn(name = "owner_id")
     private UserEntity owner;
 
-    @Column(name = "created_at")
     private ZonedDateTime createdAt;
-
-    @Column(name = "cvv_code")
     private String cvvCode;
-
-    @Column(name = "expiry_date")
     private LocalDate expiryDate;
-
-    @Column(name = "pin_code")
     private String pinCode;
 
     @ManyToOne
@@ -54,10 +47,9 @@ public class CardEntity {
     private CardProviderEntity provider;
 
     private BigDecimal sum;
-
-    @Column(name = "sum_limit")
     private Integer sumLimit;
 
     @Column(name = "blocked")
     private boolean isBlocked;
+
 }
