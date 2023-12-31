@@ -1,8 +1,8 @@
 package com.example.banking.security;
 
 import com.example.banking.security.jwt.JWTFilter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,21 +19,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Slf4j
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfiguration {
 
     private final JWTFilter jwtFilter;
-
     private final UserDetailsService userDetailsService;
-
-    @Autowired
-    public SecurityConfiguration(JWTFilter jwtFilter, UserDetailsService userDetailsService) {
-        this.jwtFilter = jwtFilter;
-        this.userDetailsService = userDetailsService;
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        log.info("IN SecurityConfig -> filterChain()");
+        log.debug("IN SecurityConfig -> filterChain(): setup security config");
         http
                 .httpBasic().disable()
                 .csrf().disable()
@@ -42,6 +36,7 @@ public class SecurityConfiguration {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .userDetailsService(userDetailsService)
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/user/**").hasRole("USER")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll()
                 );
