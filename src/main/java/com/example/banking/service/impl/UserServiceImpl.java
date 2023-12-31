@@ -1,7 +1,7 @@
 package com.example.banking.service.impl;
 
-import com.example.banking.dto.LoginRequest;
-import com.example.banking.dto.RegisterRequest;
+import com.example.banking.dto.auth.LoginRequest;
+import com.example.banking.dto.auth.RegisterRequest;
 import com.example.banking.dto.UserInfo;
 import com.example.banking.entity.RoleEntity;
 import com.example.banking.entity.RoleEntity.Roles;
@@ -45,7 +45,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UserNotFoundException("User does not exist"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Password is not correct");
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         // generate tokens & retrieve their expiration
@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
 
         user = userRepository.findByIpn(request.getIpn());
         if (user.isPresent()) {
-            throw new BadCredentialsException("User with such ipn already exists");
+            throw new BadCredentialsException("Ipn already taken");
         }
 
         RoleEntity userRole = roleRepository.findByName(Roles.USER.getRoleName())
@@ -101,7 +101,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserEntity findUser(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("user with specified identifier not found"));
+                .orElseThrow(() -> new UserNotFoundException("user not found"));
     }
 
     @Transactional
@@ -132,13 +132,13 @@ public class UserServiceImpl implements UserService {
     private UserEntity verifyRefreshToken(String refreshToken) {
 
         Long userId = ofNullable(jwtProvider.getUserId(refreshToken, REFRESH))
-                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadCredentialsException("User was not found"));
+                .orElseThrow(() -> new BadCredentialsException("User does not exist"));
 
         if (!refreshToken.equals(user.getRefreshToken())) {
-            throw new BadCredentialsException("Refresh token is fake");
+            throw new BadCredentialsException("Invalid credentials");
         }
         return user;
     }

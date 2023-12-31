@@ -1,4 +1,4 @@
-package com.example.banking.dto;
+package com.example.banking.dto.auth;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -11,12 +11,12 @@ import lombok.ToString;
 @Builder
 public class LoginRequest {
 
-    @NotNull
-    @Size(min = 13, max = 13)
+    @NotNull(message = "not present")
+    @Size(min = 13, max = 13, message = "length must be 13")
     private String phoneNumber;
 
-    @NotNull
-    @Size(min = 3, max = 20)
+    @NotNull(message = "not present")
+    @Size(min = 3, max = 20, message = "length must be in range from 3 to 20")
     private String password;
 
 }

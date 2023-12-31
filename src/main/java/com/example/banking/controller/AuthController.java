@@ -1,9 +1,9 @@
 package com.example.banking.controller;
 
-import com.example.banking.dto.LoginRequest;
-import com.example.banking.dto.RefreshRequest;
-import com.example.banking.dto.RegisterRequest;
-import com.example.banking.dto.TokenResponse;
+import com.example.banking.dto.auth.LoginRequest;
+import com.example.banking.dto.auth.RefreshRequest;
+import com.example.banking.dto.auth.RegisterRequest;
+import com.example.banking.dto.auth.TokenResponse;
 import com.example.banking.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

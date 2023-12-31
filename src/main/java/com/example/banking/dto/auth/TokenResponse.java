@@ -1,4 +1,4 @@
-package com.example.banking.dto;
+package com.example.banking.dto.auth;
 
 import lombok.Builder;
 import lombok.Getter;

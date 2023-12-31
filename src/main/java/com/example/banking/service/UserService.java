@@ -1,7 +1,7 @@
 package com.example.banking.service;
 
-import com.example.banking.dto.LoginRequest;
-import com.example.banking.dto.RegisterRequest;
+import com.example.banking.dto.auth.LoginRequest;
+import com.example.banking.dto.auth.RegisterRequest;
 import com.example.banking.dto.UserInfo;
 import com.example.banking.entity.UserEntity;
 import com.example.banking.model.TokenPair;
