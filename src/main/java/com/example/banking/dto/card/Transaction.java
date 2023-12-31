@@ -1,9 +1,9 @@
-package com.example.banking.dto;
+package com.example.banking.dto.card;
 
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.ZonedDateTime;
 
 @Getter
 @NoArgsConstructor
@@ -12,7 +12,7 @@ import java.util.Date;
 @ToString
 public class Transaction {
 
-    private Date performedAt;
+    private ZonedDateTime performedAt;
 
     private String partnerName;
 
