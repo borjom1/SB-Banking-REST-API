@@ -1,24 +1,16 @@
 package com.example.banking.service;
 
-import com.example.banking.dto.Card;
-import com.example.banking.dto.NewCardRequest;
-import com.example.banking.dto.Transaction;
-import com.example.banking.dto.TransactionRequest;
-import com.example.banking.exception.CardCredentialsException;
-import com.example.banking.exception.CardNotFoundException;
-import com.example.banking.exception.CardsLimitException;
-import com.example.banking.exception.ViolationPrivacyException;
+import com.example.banking.dto.card.Card;
+import com.example.banking.dto.card.NewCardRequest;
+import com.example.banking.dto.card.Transaction;
+import com.example.banking.dto.card.TransactionRequest;
 
 import java.util.List;
 
 public interface CardService {
-    void createCard(NewCardRequest request, Integer userId) throws CardsLimitException;
-
-    List<Card> getAllCards(Integer userId);
-
-    String getCvv(Integer userId, Integer cardId) throws CardNotFoundException;
-
-    List<Transaction> getAllTransactions(Integer userId, Integer cardId) throws ViolationPrivacyException;
-
-    void performTransaction(Integer userId, TransactionRequest request) throws ViolationPrivacyException, CardNotFoundException, CardCredentialsException;
+    void createCard(NewCardRequest request, Long userId);
+    List<Card> getAllCards(Long userId);
+    String getCvv(Long userId, Long cardId);
+    List<Transaction> getAllTransactions(Long userId, Long cardId);
+    void performTransaction(Long userId, TransactionRequest request);
 }

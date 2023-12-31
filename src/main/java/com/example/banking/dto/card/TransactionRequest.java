@@ -1,4 +1,4 @@
-package com.example.banking.dto;
+package com.example.banking.dto.card;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,17 +13,17 @@ import java.math.BigDecimal;
 @ToString
 public class TransactionRequest {
 
-    @NotNull
-    private Integer senderCardId;
+    @NotNull(message = "not present")
+    private Long senderCardId;
 
-    @NotNull
-    @Size(min = 16, max = 16)
+    @NotNull(message = "not present")
+    @Size(min = 16, max = 16, message = "length must be 16")
     private String receiverCardNumber;
 
-    @NotNull
+    @NotNull(message = "not present")
     private BigDecimal sum;
 
-    @NotNull
+    @NotNull(message = "not present")
     private String purpose;
 
 }

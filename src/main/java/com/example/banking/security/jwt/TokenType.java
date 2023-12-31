@@ -1,6 +1,6 @@
 package com.example.banking.security.jwt;
 
-public enum JWTType {
+public enum TokenType {
     ACCESS,
     REFRESH
 }

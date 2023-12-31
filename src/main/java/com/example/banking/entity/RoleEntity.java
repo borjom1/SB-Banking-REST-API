@@ -10,18 +10,33 @@ import java.util.Set;
 @Table(name = "roles")
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
 @ToString(exclude = "users")
 @EqualsAndHashCode(exclude = "users")
-@Getter
 public class RoleEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "name")
     private String name;
 
     @JsonIgnore
     @ManyToMany(mappedBy = "roles")
     private Set<UserEntity> users;
+
+    @Getter
+    public enum Roles {
+
+        USER("ROLE_USER"),
+        ADMIN("ROLE_ADMIN");
+
+        private final String roleName;
+
+        Roles(String roleName) {
+            this.roleName = roleName;
+        }
+
+    }
+
 }

@@ -1,125 +1,127 @@
 package com.example.banking.service.impl;
 
-import com.example.banking.dto.RegisterRequest;
+import com.example.banking.dto.auth.LoginRequest;
+import com.example.banking.dto.auth.RegisterRequest;
 import com.example.banking.dto.UserInfo;
 import com.example.banking.entity.RoleEntity;
+import com.example.banking.entity.RoleEntity.Roles;
 import com.example.banking.entity.UserEntity;
+import com.example.banking.exception.UserNotFoundException;
+import com.example.banking.exception.RoleNotFoundException;
+import com.example.banking.model.TokenPair;
 import com.example.banking.repository.RoleRepository;
 import com.example.banking.repository.UserRepository;
 import com.example.banking.security.jwt.JWTProvider;
-import com.example.banking.security.jwt.JWTType;
 import com.example.banking.service.UserService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static com.example.banking.security.jwt.TokenType.REFRESH;
+import static java.util.Optional.ofNullable;
+
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-
     private final RoleRepository roleRepository;
-
     private final JWTProvider jwtProvider;
-
     private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-                           JWTProvider jwtProvider, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.jwtProvider = jwtProvider;
-        this.passwordEncoder = passwordEncoder;
-    }
-
-
+    @Transactional
     @Override
-    public Map<String, String> verifyUser(String phoneNumber, String password) {
-        log.info("IN UserServiceImpl -> verifyUser()");
-        UserEntity user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new UsernameNotFoundException("User with such phone-number does not exist"));
+    public TokenPair login(LoginRequest request) {
+        log.debug("-> verifyUser()");
+        UserEntity user = userRepository.findByPhoneNumber(request.getPhoneNumber())
+                .orElseThrow(() -> new UserNotFoundException("User does not exist"));
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BadCredentialsException("Password is not correct");
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         // generate tokens & retrieve their expiration
-        Map<String, String> result = generatesTokens(user);
+        TokenPair tokens = jwtProvider.generateTokenPair(user);
 
-        // save refresh token
-        user.setRefreshToken(result.get("refreshToken"));
-        userRepository.save(user);
+        // update refresh token
+        user.setRefreshToken(tokens.refresh());
 
-        log.info("IN UserServiceImpl -> verifyUser(): {} user verified", phoneNumber);
-        return result;
+        log.debug("-> verifyUser(): {} logged in", request.getPhoneNumber());
+        return tokens;
     }
 
     @Override
     public void register(RegisterRequest request) {
-        log.info("IN UserServiceImpl -> register()");
-        UserEntity user = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
-        if (user != null) {
+        log.debug("-> register()");
+
+        Optional<UserEntity> user = userRepository.findByPhoneNumber(request.getPhoneNumber());
+        if (user.isPresent()) {
             throw new BadCredentialsException("User with such phone-number already exists");
         }
-        user = userRepository.findByIpn(request.getIpn()).orElse(null);
-        if (user != null) {
-            throw new BadCredentialsException("User with such ipn already exists");
+
+        user = userRepository.findByIpn(request.getIpn());
+        if (user.isPresent()) {
+            throw new BadCredentialsException("Ipn already taken");
         }
 
-        // find & give role to new user
-        Set<RoleEntity> roles = new HashSet<>();
-        roleRepository.findByName("ROLE_USER").ifPresent(roles::add);
+        RoleEntity userRole = roleRepository.findByName(Roles.USER.getRoleName())
+                .orElseThrow(() -> new RoleNotFoundException("Role \"USER\" not found"));
 
-        user = UserEntity.builder()
+        UserEntity newUser = UserEntity.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .phoneNumber(request.getPhoneNumber())
                 .ipn(request.getIpn())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .registeredAt(ZonedDateTime.now())
-                .roles(roles)
                 .build();
 
-        userRepository.save(user);
-        log.info("IN register(): {} user was saved", user.getPhoneNumber());
+        newUser.addRole(userRole);
+
+        userRepository.save(newUser);
+        log.debug("-> register(): {} registered", newUser.getPhoneNumber());
     }
 
+    @Transactional
     @Override
     public void logout(String refreshToken) {
         UserEntity user = verifyRefreshToken(refreshToken);
         user.setRefreshToken(null);
-        userRepository.save(user);
-        log.info("IN UserServiceImpl -> logout(): {} user successfully logged out", user.getPhoneNumber());
+        log.debug("-> logout(): {} successfully logged out", user.getPhoneNumber());
     }
 
     @Override
-    public Map<String, String> getTokens(String refreshToken) {
-        log.info("IN UserServiceImpl -> getTokens()");
+    public UserEntity findUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("user not found"));
+    }
+
+    @Transactional
+    @Override
+    public TokenPair refreshTokens(String refreshToken) {
+        log.debug("-> getTokens()");
         UserEntity user = verifyRefreshToken(refreshToken);
 
         // if refresh tokens match then generate a new pair of tokens and return
-        Map<String, String> result = generatesTokens(user);
+        TokenPair tokens = jwtProvider.generateTokenPair(user);
+        user.setRefreshToken(tokens.refresh());
 
-        // save refresh token
-        user.setRefreshToken(result.get("refreshToken"));
-        userRepository.save(user);
-
-        log.info("IN UserServiceImpl -> getTokens(): {} user refreshed success", user.getPhoneNumber());
-        return result;
+        log.debug("-> getTokens(): {} refreshed tokens", user.getPhoneNumber());
+        return tokens;
     }
 
     @Override
-    public UserInfo getUserInfo(Integer userId) {
-        UserEntity user = userRepository.findById(userId).get();
+    public UserInfo getUserInfo(Long userId) {
+        UserEntity user = findUser(userId);
+
         return new UserInfo(
                 user.getFirstName() + " " + user.getLastName(),
                 user.getRegisteredAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
@@ -128,34 +130,17 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserEntity verifyRefreshToken(String refreshToken) {
-        // validating refresh token
-        Integer userId = Optional.ofNullable(jwtProvider.getUserId(refreshToken, JWTType.REFRESH))
-                .orElseThrow(() -> new BadCredentialsException("Invalid Refresh JWT"));
+
+        Long userId = ofNullable(jwtProvider.getUserId(refreshToken, REFRESH))
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadCredentialsException("User was not found"));
+                .orElseThrow(() -> new BadCredentialsException("User does not exist"));
 
-        if (user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)) {
-            throw new BadCredentialsException("Refresh JWT is fake");
+        if (!refreshToken.equals(user.getRefreshToken())) {
+            throw new BadCredentialsException("Invalid credentials");
         }
         return user;
-    }
-
-    private Map<String, String> generatesTokens(UserEntity user) {
-        String accessToken = jwtProvider.generateToken(JWTType.ACCESS, user.getPhoneNumber(), user.getId());
-        ZonedDateTime accessExpiration = jwtProvider.getExpirationDate(accessToken, JWTType.ACCESS);
-
-        String refreshToken = jwtProvider.generateToken(JWTType.REFRESH, user.getPhoneNumber(), user.getId());
-        ZonedDateTime refreshExpiration = jwtProvider.getExpirationDate(refreshToken, JWTType.REFRESH);
-
-        // wrap info
-        Map<String, String> result = new HashMap<>();
-        result.put("accessToken", accessToken);
-        result.put("accessTokenExpiration", accessExpiration.toString());
-        result.put("refreshToken", refreshToken);
-        result.put("refreshTokenExpiration", refreshExpiration.toString());
-
-        return result;
     }
 
 }

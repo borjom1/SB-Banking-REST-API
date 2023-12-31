@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TransactionRepository extends JpaRepository<TransactionEntity, Integer> {
+public interface TransactionRepository extends JpaRepository<TransactionEntity, Long> {
     @Query("FROM TransactionEntity WHERE sender.id = :cardId OR receiver.id = :cardId ORDER BY time DESC")
-    List<TransactionEntity> getAllByCardId(Integer cardId);
+    List<TransactionEntity> getAllByCardId(Long cardId);
 }

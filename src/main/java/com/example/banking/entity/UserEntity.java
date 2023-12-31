@@ -5,55 +5,50 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.ZonedDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "users")
-@Data
-@Builder
-@EqualsAndHashCode(exclude = "roles")
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
+@Builder
+@EqualsAndHashCode(of = {"id", "phoneNumber", "ipn"})
+@ToString(exclude = {"password", "refreshToken", "roles", "cards"})
 public class UserEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
-    @Column(name = "first_name")
     private String firstName;
-
-    @Column(name = "last_name")
     private String lastName;
-
-    @Column(name = "registered_at")
     private ZonedDateTime registeredAt;
-
-    @Column(name = "phone_number")
     private String phoneNumber;
-
-    @Column(name = "ipn")
     private String ipn;
 
     @JsonIgnore
-    @Column(name = "password")
     private String password;
 
     @JsonIgnore
-    @Column(name = "refresh_token")
     private String refreshToken;
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles",
+    @JoinTable(
+            name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<RoleEntity> roles;
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<RoleEntity> roles = new HashSet<>();
 
     @OneToMany(mappedBy = "owner")
     private Set<CardEntity> cards;
-
 
     public void addRole(RoleEntity role) {
         roles.add(role);
         role.getUsers().add(this);
     }
+
 }

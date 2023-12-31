@@ -1,4 +1,4 @@
-package com.example.banking.dto;
+package com.example.banking.dto.card;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Getter
 public class Card {
-    private int id;
+    private Long id;
     private String type;
     private String currency;
     private String provider;

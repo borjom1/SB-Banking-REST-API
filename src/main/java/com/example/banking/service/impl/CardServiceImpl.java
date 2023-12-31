@@ -1,82 +1,87 @@
 package com.example.banking.service.impl;
 
-import com.example.banking.dto.Card;
-import com.example.banking.dto.NewCardRequest;
-import com.example.banking.dto.Transaction;
-import com.example.banking.dto.TransactionRequest;
+import com.example.banking.dto.card.Card;
+import com.example.banking.dto.card.NewCardRequest;
+import com.example.banking.dto.card.Transaction;
+import com.example.banking.dto.card.TransactionRequest;
 import com.example.banking.entity.*;
-import com.example.banking.exception.CardCredentialsException;
-import com.example.banking.exception.CardNotFoundException;
-import com.example.banking.exception.CardsLimitException;
-import com.example.banking.exception.ViolationPrivacyException;
+import com.example.banking.exception.*;
 import com.example.banking.repository.*;
 import com.example.banking.service.CardService;
-import com.example.banking.util.NumberGenerator;
+import com.example.banking.service.UserService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.Month;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
+
+import static com.example.banking.entity.CurrencyTypeEntity.Currency.UAH;
+import static com.example.banking.util.NumberGenerator.*;
+import static com.example.banking.util.NumberGenerator.generate;
+import static java.lang.String.format;
+import static java.time.LocalDate.*;
+import static java.time.Month.DECEMBER;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CardServiceImpl implements CardService {
 
-    private final static int CARDS_LIMIT = 5;
-    private final static int SCALE = 2;
-    private final static int DEFAULT_SUM_LIMIT = 500;
+    @Value("${banking.precision}")
+    private int precision;
 
-    private final UserRepository userRepository;
+    @Value("${banking.cards.limits.count}")
+    private int cardsLimit;
+
+    @Value("${banking.cards.limits.txn-sum}")
+    private int defaultSumLimit;
+
+    private final UserService userService;
+
     private final CardRepository cardRepository;
     private final CardProviderRepository cardProviderRepository;
     private final CurrencyRepository currencyRepository;
     private final CardTypeRepository cardTypeRepository;
     private final TransactionRepository transactionRepository;
 
-    @Autowired
-    public CardServiceImpl(UserRepository userRepository, CardRepository cardRepository, CardProviderRepository cardProviderRepository,
-                           CurrencyRepository currencyRepository, CardTypeRepository cardTypeRepository, TransactionRepository transactionRepository) {
-        this.userRepository = userRepository;
-        this.cardRepository = cardRepository;
-        this.cardProviderRepository = cardProviderRepository;
-        this.currencyRepository = currencyRepository;
-        this.cardTypeRepository = cardTypeRepository;
-        this.transactionRepository = transactionRepository;
-    }
-
+    @Transactional
     @Override
-    public void createCard(NewCardRequest request, Integer userId) throws CardsLimitException {
-        log.info("IN CardService -> createCard() user-id:{}", userId);
+    public void createCard(NewCardRequest request, Long userId) {
+        log.info("-> createCard() user-id={}", userId);
 
-        // user will be present if he pass JWTFilter
-        UserEntity user = userRepository.findById(userId).get();
-        if (user.getCards().size() == CARDS_LIMIT) {
-            throw new CardsLimitException(String.format("User can not have more than %d cards", CARDS_LIMIT));
+        UserEntity user = userService.findUser(userId);
+        if (user.getCards().size() == cardsLimit) {
+            throw new CardsLimitException("Cards count limit is exceeded");
         }
 
-        // validate request options
+        // find card provider, currency and card type
         CardProviderEntity selectedProvider = cardProviderRepository.findByName(request.getProvider())
-                .orElseThrow(() -> new BadCredentialsException("Card provider not found"));
+                .orElseThrow(() -> new IllegalStateException("Card provider not found"));
 
         CurrencyTypeEntity selectedCurrency = currencyRepository.findByName(request.getCurrency())
-                .orElseThrow(() -> new BadCredentialsException("Currency not found"));
+                .orElseThrow(() -> new IllegalStateException("Currency not found"));
 
-        CardTypeEntity selectedCardType = cardTypeRepository.findByName(request.getType())
-                .orElseThrow(() -> new BadCredentialsException("Type of card not found"));
-
+        CardTypeEntity selectedCardType = cardTypeRepository.findByName(request.getCardType())
+                .orElseThrow(() -> new IllegalStateException("Type of card not found"));
 
         String generatedCardNumber;
+
+        // generate card number till it is not unique
         do {
-            generatedCardNumber = selectedProvider.getCode() + NumberGenerator.generate(NumberGenerator.ACCOUNT_LENGTH);
+            generatedCardNumber = selectedProvider.getCode() + generate(ACCOUNT_LENGTH);
         } while (cardRepository.findByCardNumber(generatedCardNumber).isPresent());
+
+        // the end of card's validity finishes in two years on 1st December
+        LocalDate expiryDate = of(now().getYear() + 2, DECEMBER, 1);
 
         // build card
         CardEntity newCard = CardEntity.builder()
@@ -85,11 +90,11 @@ public class CardServiceImpl implements CardService {
                 .provider(selectedProvider)
                 .cardType(selectedCardType)
                 .currencyType(selectedCurrency)
-                .expiryDate(LocalDate.of(LocalDate.now().getYear() + 2, Month.DECEMBER, 1))
-                .cvvCode(NumberGenerator.generate(NumberGenerator.CVV_LENGTH))
-                .pinCode(NumberGenerator.generate(NumberGenerator.PIN_LENGTH))
+                .expiryDate(expiryDate)
+                .cvvCode(generate(CVV_LENGTH))
+                .pinCode(generate(PIN_LENGTH))
                 .sum(BigDecimal.ZERO)
-                .sumLimit(DEFAULT_SUM_LIMIT)
+                .sumLimit(defaultSumLimit)
                 .isBlocked(false)
                 .owner(user)
                 .build();
@@ -97,17 +102,15 @@ public class CardServiceImpl implements CardService {
         // save card
         user.getCards().add(newCard);
         cardRepository.save(newCard);
-        log.info("IN CardService -> createCard(): created card:{} for user:{}", newCard.getId(), userId);
     }
 
     @Override
-    public List<Card> getAllCards(Integer userId) {
-        log.info("IN CardService -> getAllCards()");
+    public List<Card> getAllCards(Long userId) {
+        log.debug("-> getAllCards()");
 
-        // user will be present if he pass JWTFilter
-        UserEntity user = userRepository.findById(userId).get();
+        UserEntity user = userService.findUser(userId);
 
-        List<CardEntity> cards = new java.util.ArrayList<>(user.getCards().stream().toList());
+        List<CardEntity> cards = new ArrayList<>(user.getCards().stream().toList());
         cards.sort(Comparator.comparing(CardEntity::getCreatedAt).reversed());
 
         return cards.stream().map(cardEntity -> {
@@ -119,37 +122,35 @@ public class CardServiceImpl implements CardService {
                     cardEntity.getProvider().getName(),
                     cardEntity.getSum(),
                     cardEntity.getCardNumber(),
-                    String.format("%d/%d", expiryDate.getMonth().getValue(), expiryDate.getYear() % 100),
+                    format("%d/%d", expiryDate.getMonth().getValue(), expiryDate.getYear() % 100),
                     cardEntity.isBlocked()
             );
         }).toList();
     }
 
     @Override
-    public String getCvv(Integer userId, Integer cardId) throws CardNotFoundException {
-        log.info("IN CardService -> getCvv(): card-id:{}", cardId);
+    public String getCvv(Long userId, Long cardId) {
+        log.debug("-> getCvv(): card-id={}", cardId);
 
-        // user will be present if he pass JWTFilter
-        UserEntity user = userRepository.findById(userId).get();
+        UserEntity user = userService.findUser(userId);
 
         CardEntity card = user.getCards().stream()
                 .filter(cardEntity -> cardEntity.getId().equals(cardId))
                 .findAny()
-                .orElseThrow(() -> new CardNotFoundException(String.format("Card with id:%d not exist", cardId)));
+                .orElseThrow(() -> new CardNotFoundException("Card does not exist"));
 
-        log.info("IN CardService -> getCvv(): card-id:{} - success", cardId);
         return card.getCvvCode();
     }
 
     @Override
-    public List<Transaction> getAllTransactions(Integer userId, Integer cardId) throws ViolationPrivacyException {
-        log.info("IN CardService -> getAllTransactions(): user-id:{} card-id:{}", userId, cardId);
+    public List<Transaction> getAllTransactions(Long userId, Long cardId) {
+        log.debug("-> getAllTransactions(): user-id={} card-id={}", userId, cardId);
 
-        // user will be present if he pass JWTFilter
-        UserEntity user = userRepository.findById(userId).get();
+        UserEntity user = userService.findUser(userId);
 
-        getCardIfOwner(user, cardId);
+        getCardIfOwner(user, cardId); // this checks if user owns specified card
 
+        // retrieve all transactions performed with specified card by custom native query
         List<TransactionEntity> transactions = transactionRepository.getAllByCardId(cardId);
 
         return transactions.stream().map(tEntity -> {
@@ -178,31 +179,31 @@ public class CardServiceImpl implements CardService {
                         .isPartnerSender(true);
             }
 
-            tBuilder.performedAt(Date.from(tEntity.getTime().toInstant()));
+            tBuilder.performedAt(tEntity.getTime());
             tBuilder.partnerName(partner.getFirstName() + " " + partner.getLastName());
 
             return tBuilder.build();
         }).toList();
     }
 
+    @Transactional
     @Override
-    public void performTransaction(Integer userId, TransactionRequest request) throws ViolationPrivacyException, CardNotFoundException, CardCredentialsException {
-        log.info("IN CardService -> performTransaction(): user-id:{} transaction:{}", userId, request);
+    public void performTransaction(Long userId, @NonNull TransactionRequest request) {
+        log.debug("-> performTransaction(): user-id={} txn={}", userId, request);
 
-        // user will be present if he pass JWTFilter
-        UserEntity sender = userRepository.findById(userId).get();
+        UserEntity sender = userService.findUser(userId);
 
         // find sender & receiver cards
         CardEntity senderCard = getCardIfOwner(sender, request.getSenderCardId());
         CardEntity receiverCard = cardRepository.findByCardNumber(request.getReceiverCardNumber())
-                .orElseThrow(() -> new CardNotFoundException(String.format("Card with number %s not found", request.getReceiverCardNumber())));
+                .orElseThrow(() -> new CardNotFoundException(format("Card[%s] not found", request.getReceiverCardNumber())));
 
         // define currencies
         var senderCardCurrency = senderCard.getCurrencyType();
         var receiverCardCurrency = receiverCard.getCurrencyType();
 
         BigDecimal initialSum = request.getSum();
-        verifyTransactionProperties(senderCard, initialSum);
+        checkTransactionAvailability(senderCard, initialSum);
 
         // grab commission
         double sumRate = 1 - senderCardCurrency.getCommission() / 100;
@@ -213,9 +214,9 @@ public class CardServiceImpl implements CardService {
         BigDecimal convertedSum = convertSum(transactionSum, senderCardCurrency, receiverCardCurrency);
         BigDecimal convertedCommission = convertSum(commission, senderCardCurrency, receiverCardCurrency);
 
-        log.info("IN CardService -> performTransaction(): sum_rate:{}", sumRate);
-        log.info("IN CardService -> performTransaction(): initial_sum:{}, without_commission:{}, converted_sum:{}", initialSum, transactionSum,convertedSum);
-        log.info("IN CardService -> performTransaction(): commission:{}, converted_commission:{}", commission, convertedCommission);
+//        log.debug("IN CardService -> performTransaction(): sum_rate:{}", sumRate);
+//        log.debug("IN CardService -> performTransaction(): initial_sum:{}, without_commission:{}, converted_sum:{}", initialSum, transactionSum, convertedSum);
+//        log.debug("IN CardService -> performTransaction(): commission:{}, converted_commission:{}", commission, convertedCommission);
 
         // make transfer
         senderCard.setSum(senderCard.getSum().subtract(initialSum));
@@ -233,45 +234,56 @@ public class CardServiceImpl implements CardService {
                 .convertedCommission(convertedCommission)
                 .build();
 
-        // saving
-        cardRepository.save(senderCard);
-        cardRepository.save(receiverCard);
         transactionRepository.save(transaction);
 
-        log.info("IN CardService -> performTransaction(): user-id:{} transaction:{} - SUCCESS", userId, request);
+        log.debug("-> performTransaction(): user-id={} txn={} - SUCCESS", userId, request);
     }
 
-    private BigDecimal convertSum(BigDecimal sum, CurrencyTypeEntity senderCardCurrency, CurrencyTypeEntity receiverCardCurrency) {
+    private BigDecimal convertSum(@NonNull BigDecimal sum,
+                                  @NonNull CurrencyTypeEntity senderCardCurrency,
+                                  @NonNull CurrencyTypeEntity receiverCardCurrency) {
 
-        if (senderCardCurrency.getName().equals("uah")) {
-            return receiverCardCurrency.getName().equals("uah") ?
+        if (senderCardCurrency.getName().equals(UAH.name())) {
+            return receiverCardCurrency.getName().equals(UAH.name()) ?
                     sum :
-                    sum.divide(receiverCardCurrency.getSalesExchangeRate(), SCALE, RoundingMode.HALF_UP);
-        } else if (receiverCardCurrency.getName().equals("uah")) {
+                    sum.divide(receiverCardCurrency.getSalesExchangeRate(), precision, RoundingMode.HALF_UP);
+        } else if (receiverCardCurrency.getName().equals(UAH.name())) {
             return sum.multiply(senderCardCurrency.getBuyingExchangeRate());
         } else {
             sum = sum.multiply(senderCardCurrency.getBuyingExchangeRate());
-            return sum.divide(receiverCardCurrency.getSalesExchangeRate(), SCALE, RoundingMode.HALF_UP);
+            return sum.divide(receiverCardCurrency.getSalesExchangeRate(), precision, RoundingMode.HALF_UP);
         }
     }
 
-    private void verifyTransactionProperties(CardEntity senderCard, BigDecimal transactionSum) throws CardCredentialsException {
-        if (senderCard.isBlocked()) { // check block status
-            throw new CardCredentialsException("Card id:" + senderCard.getId() + " is blocked");
-        } else if (senderCard.getExpiryDate().isBefore(LocalDate.now())) { // check expire date
-            throw new CardCredentialsException("Card id:" + senderCard.getId() + " is expired");
-        } else if (senderCard.getSum().compareTo(transactionSum) < 0) { // check sum
-            throw new CardCredentialsException("Card id:" + senderCard.getId() + " not enough funds");
-        } else if (BigDecimal.valueOf(senderCard.getSumLimit().longValue()).compareTo(transactionSum) < 0) { // check limit
-            throw new CardCredentialsException("Card id:" + senderCard.getId() + " limit is exceeded");
+    private void checkTransactionAvailability(@NonNull CardEntity sourceCard, @NonNull BigDecimal txnSum) {
+
+        String errorMsg = null;
+
+        if (sourceCard.isBlocked()) { // check block status
+            errorMsg = format("Card[%d] is blocked", sourceCard.getId());
+
+        } else if (sourceCard.getExpiryDate().isBefore(now())) { // check expire date
+            errorMsg = format("Card[%d] is expired", sourceCard.getId());
+
+        } else if (sourceCard.getSum().compareTo(txnSum) < 0) { // check sum
+            errorMsg = format("Card[%d] not enough funds", sourceCard.getId());
+
+            // check if transaction sum exceeds card's sum limit
+        } else if (BigDecimal.valueOf(sourceCard.getSumLimit().longValue()).compareTo(txnSum) < 0) {
+            errorMsg = format("Card[%d] limit is exceeded", sourceCard.getId());
         }
+
+        if (errorMsg != null) {
+            throw new TransactionNotAvailableException(errorMsg);
+        }
+
     }
 
-    private CardEntity getCardIfOwner(UserEntity user, Integer cardId) throws ViolationPrivacyException {
+    private CardEntity getCardIfOwner(@NonNull UserEntity user, Long cardId) {
         return user.getCards().stream()
                 .filter(card -> card.getId().equals(cardId))
                 .findAny()
-                .orElseThrow(() -> new ViolationPrivacyException(String.format("User:%d does not have card with id:%d", user.getId(), cardId)));
+                .orElseThrow(() -> new ViolationPrivacyException("Card not found"));
     }
 
 }

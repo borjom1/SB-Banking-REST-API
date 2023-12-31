@@ -13,12 +13,12 @@ import java.util.Set;
 @Getter
 public class JWTUserDetails implements UserDetails {
 
-    private final Integer id;
+    private final Long id;
     private final String phoneNumber;
     private final String password;
     private final Set<RoleEntity> roles;
 
-    private JWTUserDetails(Integer id, String phoneNumber, String password, Set<RoleEntity> roles) {
+    private JWTUserDetails(Long id, String phoneNumber, String password, Set<RoleEntity> roles) {
         this.id = id;
         this.phoneNumber = phoneNumber;
         this.password = password;
