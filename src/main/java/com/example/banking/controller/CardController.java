@@ -6,6 +6,8 @@ import com.example.banking.dto.card.Transaction;
 import com.example.banking.dto.card.TransactionRequest;
 import com.example.banking.security.jwt.JWTUserDetails;
 import com.example.banking.service.CardService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,10 @@ import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
+@Tag(
+        name = "Card management",
+        description = "End-points for managing own funds"
+)
 @Slf4j
 @RestController
 @RequestMapping("/user/cards")
@@ -25,6 +31,7 @@ public class CardController {
 
     private final CardService cardService;
 
+    @Operation(summary = "Retrieve all user's cards")
     @GetMapping
     public List<Card> getAllCards(@NonNull Authentication auth) {
         var principal = (JWTUserDetails) auth.getPrincipal();
@@ -33,6 +40,7 @@ public class CardController {
         return cardService.getAllCards(principal.getId());
     }
 
+    @Operation(summary = "Retrieve cvv for specific card by its id")
     @GetMapping("/{id}")
     public String getCvv(@PathVariable long id, @NonNull Authentication auth) {
         log.debug("-> getCvv(): card-id={}", id);
@@ -41,6 +49,7 @@ public class CardController {
         return cardService.getCvv(principal.getId(), id);
     }
 
+    @Operation(summary = "Create a new card")
     @ResponseStatus(CREATED)
     @PostMapping
     public void createCard(@Valid @RequestBody NewCardRequest request,
@@ -52,6 +61,7 @@ public class CardController {
         cardService.createCard(request, principal.getId());
     }
 
+    @Operation(summary = "Retrieve all performed transfers for specified card")
     @GetMapping("/{id}/transfers")
     public List<Transaction> getTransactions(@PathVariable long id, @NonNull Authentication auth) {
         var principal = (JWTUserDetails) auth.getPrincipal();
@@ -60,6 +70,7 @@ public class CardController {
         return cardService.getAllTransactions(principal.getId(), id);
     }
 
+    @Operation(summary = "Perform transaction between two cards")
     @ResponseStatus(CREATED)
     @PostMapping("/transfer")
     public void createTransaction(@Valid @RequestBody TransactionRequest request,
