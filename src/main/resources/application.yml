@@ -2,15 +2,15 @@ jwt:
   subject: banking-auth
   issuer: banking.org
   secret:
-    access: ...
-    refresh: ...
+    access:
+    refresh:
 
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: ...
-    username: ...
-    password: ...
+    url:
+    username:
+    password:
 
   jpa:
     hibernate:
@@ -26,11 +26,19 @@ spring:
 
 logging:
   level:
-    com.example.banking: DEBUG
+    com.example.banking: INFO
 
 banking:
-  precision: 2
+
+  openapi:
+    info:
+      title: 'Banking API'
+      description: 'This API exposes end-points to manage your funds using virtual cards'
+    contact:
+      url: 'https://github.com/borjom1/SB-Banking-REST-API'
+
   cards:
+    precision: 2
     limits:
       count: 5
       txn-sum: 500

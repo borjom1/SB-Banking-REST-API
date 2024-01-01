@@ -36,7 +36,7 @@ import static java.time.Month.DECEMBER;
 @RequiredArgsConstructor
 public class CardServiceImpl implements CardService {
 
-    @Value("${banking.precision}")
+    @Value("${banking.cards.precision}")
     private int precision;
 
     @Value("${banking.cards.limits.count}")
