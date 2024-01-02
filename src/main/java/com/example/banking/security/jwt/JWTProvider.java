@@ -10,7 +10,6 @@ import com.example.banking.model.TokenPair;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Date;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -57,7 +55,7 @@ public class JWTProvider {
             getDecodedJWT(token, type);
             return true;
         } catch (JWTVerificationException e) {
-            log.error("{}", e.getMessage());
+            log.debug("{}", e.getMessage());
             return false;
         }
     }
@@ -105,7 +103,7 @@ public class JWTProvider {
         try {
             return retrieveClaims(token, type).get("id").asLong();
         } catch (JWTVerificationException e) {
-            log.info("IN JwtProvider -> getUserId(): exception {}", e.getMessage());
+            log.debug("-> getUserId(): exception {}", e.getMessage());
             return null;
         }
     }
