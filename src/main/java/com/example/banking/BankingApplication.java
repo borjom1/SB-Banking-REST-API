@@ -1,5 +1,6 @@
 package com.example.banking;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -32,6 +33,13 @@ public class BankingApplication {
 				.contact(new Contact().url(url));
 
 		return new OpenAPI().info(info);
+	}
+
+	@Bean
+	public ObjectMapper objectMapper() {
+		var mapper = new ObjectMapper();
+		mapper.findAndRegisterModules();
+		return mapper;
 	}
 
 }
